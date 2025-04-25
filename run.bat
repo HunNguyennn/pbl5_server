@@ -1,6 +1,0 @@
-@echo off
-echo Activating virtual environment...
-call venv\Scripts\activate.bat
-echo Starting WebSocket server...
-python server.py
-pause

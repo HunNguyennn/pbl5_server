@@ -5,11 +5,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import json, datetime, sqlite3, os
 
+
 # Tạo router riêng cho dashboard
 dashboard_router = APIRouter()
 
 # Khởi tạo templates
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory="app/templates")
 
 # Khởi tạo database nếu chưa có
 def init_database():

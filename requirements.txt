@@ -3,3 +3,7 @@ uvicorn
 jinja2
 numpy
 opencv-python
+python-dotenv
+tensorflow
+pytest
+httpx
