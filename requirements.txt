@@ -7,3 +7,4 @@ python-dotenv
 tensorflow
 pytest
 httpx
+websockets

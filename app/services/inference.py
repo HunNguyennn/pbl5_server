@@ -5,10 +5,11 @@ import cv2
 from app.core.config import settings
 
 # Load labels and categories
-labels = {0: 'bananapeel', 1: 'bottlescans', 2: 'eggsell', 3: 'paper', 4: 'plasticbag'}
+labels = {0: 'AppleCore', 1: 'DryLeaves', 2: 'EggShell', 3: 'OrangePeel', 4: 'Paper', 5: 'PaperCup', 6: 'PlasticBag', 7: 'BananaPeel', 8: 'Cans', 9: 'PlasticBottle'}
 waste_categories = {
-    'bananapeel': 'huu_co', 'bottlescans': 'vo_co',
-    'eggsell': 'huu_co', 'paper': 'vo_co', 'plasticbag': 'vo_co'
+    'AppleCore': 'huu_co', 'DryLeaves': 'huu_co', 'EggShell': 'huu_co',
+    'OrangePeel': 'huu_co', 'Paper': 'vo_co', 'PaperCup': 'vo_co',
+    'PlasticBag': 'vo_co', 'BananaPeel': 'huu_co', 'Cans': 'vo_co',
 }
 
 # Load TFLite model
@@ -37,9 +38,9 @@ def predict(image, force=False):
     _interpreter.invoke()
     out_raw = _interpreter.get_tensor(_output_details[0]['index'])
     # xác định số classes từ labels của bạn
-    num_classes = len(labels)           # == 5
+    num_classes = len(labels)
     # mỗi detection có 4 box coords + num_classes scores
-    num_outputs = num_classes + 4       # == 9
+    num_outputs = num_classes + 4
     # reshape đầu ra vuông theo (n_detections, num_outputs)
     out = out_raw.reshape(-1, num_outputs)
 

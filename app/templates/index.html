@@ -3,8 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
     <title>Raspberry Pi - Thùng Rác Thông Minh</title>
+    <link rel="icon" href="/static/favicon.ico">
+
+
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -114,258 +117,81 @@
 
 <body>
     <h1>Raspberry Pi - Thùng Rác Thông Minh</h1>
-    <!-- --------- Link đến Dashboard --------- -->
-    <p>
-        <a href="/dashboard" style="text-decoration:none;">
-            <button>Xem Dashboard</button>
-        </a>
-    </p>
-    <div class="container">
-        <div class="video-container">
-            <video id="video" autoplay playsinline></video>
-        </div>
+    <p><a href="/dashboard"><button>Xem Dashboard</button></a></p>
 
+    <div class="container">
+        <video id="video" autoplay playsinline></video>
         <div class="button-container">
             <button id="startCamera">Bật Camera</button>
-            <button id="startStreaming" disabled>Bắt Đầu Phân Tích</button>
-            <button id="stopStreaming" disabled>Dừng Phân Tích</button>
+            <button id="startAnalysis" disabled>Bắt Đầu Phân Tích</button>
         </div>
-
-        <div class="status" id="status">Đang khởi động...</div>
-
-        <canvas id="canvas"></canvas>
-
+        <div class="status" id="status">Sẵn sàng</div>
+        <canvas id="canvas" style="display:none;"></canvas>
         <div class="info-container">
             <h3>Thông Tin Phân Loại</h3>
-            <div id="detectionInfo">Chưa phát hiện rác</div>
-
-            <h3>Dữ Liệu Cảm Biến</h3>
-            <div class="sensor-data">
-                <div class="data-item">
-                    <div>Khoảng cách:</div>
-                    <div id="distanceSensor">-- cm</div>
-                </div>
-                <div class="data-item">
-                    <div>Servo:</div>
-                    <div id="servoStatus">-- độ</div>
-                </div>
-            </div>
+            <div id="detectionInfo">Chưa phân tích</div>
         </div>
-
-        <h3>Console</h3>
         <div class="console" id="console"></div>
     </div>
+
     <script>
-        // Các biến toàn cục
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const startButton = document.getElementById('startCamera');
-        const startStreamingButton = document.getElementById('startStreaming');
-        const stopStreamingButton = document.getElementById('stopStreaming');
-        const statusElement = document.getElementById('status');
-        const consoleElement = document.getElementById('console');
-        const detectionInfo = document.getElementById('detectionInfo');
-        const distanceSensor = document.getElementById('distanceSensor');
-        const servoStatus = document.getElementById('servoStatus');
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const startCamera = document.getElementById("startCamera");
+        const startAnalysis = document.getElementById("startAnalysis");
+        const statusEl = document.getElementById("status");
+        const detectionInfo = document.getElementById("detectionInfo");
+        const consoleEl = document.getElementById("console");
 
-        // URL của server (máy tính Windows)
-        const SERVER_URL = 'ws://192.168.2.8:8000/ws';
-
-
-        let stream = null;
-        let socket = null;
-        let isStreaming = false;
-        let streamInterval = null;
-
-        // Thêm log vào console
-        function log(message) {
-            const now = new Date().toLocaleTimeString();
-            consoleElement.innerHTML += `<div>[${now}] ${message}</div>`;
-            consoleElement.scrollTop = consoleElement.scrollHeight;
+        function log(msg) {
+            const t = new Date().toLocaleTimeString();
+            consoleEl.innerHTML += `<div>[${t}] ${msg}</div>`;
+            consoleEl.scrollTop = consoleEl.scrollHeight;
         }
 
-        // Kết nối WebSocket
-        function connectWebSocket() {
+        startCamera.onclick = async () => {
             try {
-                socket = new WebSocket(SERVER_URL);
-
-                socket.onopen = function () {
-                    log("Kết nối WebSocket thành công");
-                    statusElement.textContent = "Đã kết nối đến server";
-                    // Gửi thông báo đây là client raspberry
-                    socket.send("raspberry");
-                    startStreamingButton.disabled = false;
-                };
-
-                socket.onclose = function () {
-                    log("Mất kết nối đến server");
-                    statusElement.textContent = "Mất kết nối đến server";
-                    startStreamingButton.disabled = true;
-                    stopStreamingButton.disabled = true;
-                    isStreaming = false;
-                    if (streamInterval) {
-                        clearInterval(streamInterval);
-                        streamInterval = null;
-                    }
-
-                    // Thử kết nối lại sau 5 giây
-                    setTimeout(connectWebSocket, 5000);
-                };
-
-                socket.onerror = function (error) {
-                    log(`Lỗi WebSocket: ${error.message}`);
-                    statusElement.textContent = "Lỗi kết nối";
-                };
-
-                socket.onmessage = function (event) {
-                    try {
-                        const data = JSON.parse(event.data);
-
-                        // Xử lý dữ liệu nhận được từ server
-                        log(`Nhận từ server: ${event.data}`);
-
-                        if (data.waste_type) {
-                            // Thông tin phân loại rác
-                            const wasteType = data.waste_type === "huu_co" ? "Hữu cơ" : "Vô cơ";
-                            detectionInfo.innerHTML = `
-                        <div>Loại rác: <strong>${wasteType}</strong></div>
-                        <div>Chi tiết: ${data.specific_waste}</div>
-                        <div>Độ tin cậy: ${(data.confidence * 100).toFixed(2)}%</div>
-                    `;
-                        }
-
-                        if (data.action === "move_servo") {
-                            // Hiển thị góc servo
-                            servoStatus.textContent = `${data.angle} độ`;
-
-                            // Gửi lệnh đến Arduino qua Serial (giả lập - bạn sẽ cần thực hiện thao tác này trong Python)
-                            log(`Gửi lệnh servo: ${data.angle} độ`);
-                        }
-
-                    } catch (err) {
-                        log(`Lỗi xử lý dữ liệu: ${err.message}`);
-                    }
-                };
-
-            } catch (err) {
-                log(`Lỗi tạo WebSocket: ${err.message}`);
-                statusElement.textContent = "Không thể kết nối đến server";
-
-                // Thử kết nối lại sau 5 giây
-                setTimeout(connectWebSocket, 5000);
-            }
-        }
-
-        // Khởi động camera
-        startButton.addEventListener('click', async () => {
-            try {
-                statusElement.textContent = "Đang kết nối camera...";
-                stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        width: { ideal: 640 },
-                        height: { ideal: 480 },
-                        facingMode: 'environment' // Sử dụng camera sau nếu có
-                    }
-                });
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = stream;
-                startButton.disabled = true;
-
-                // Kết nối đến server
-                connectWebSocket();
-
-                log("Camera đã được kết nối");
-                statusElement.textContent = "Camera đã sẵn sàng. Kết nối đến server...";
-            } catch (err) {
-                console.error("Lỗi truy cập camera: ", err);
-                log(`Lỗi truy cập camera: ${err.message}`);
-                statusElement.textContent = "Không thể truy cập camera. Vui lòng kiểm tra quyền truy cập.";
+                startCamera.disabled = true;
+                startAnalysis.disabled = false;
+                statusEl.textContent = "Camera đã kết nối";
+                log("Camera ready");
+            } catch (e) {
+                statusEl.textContent = "Không thể truy cập camera";
+                log("Camera error: " + e.message);
             }
-        });
+        };
 
-        // Bắt đầu streaming
-        startStreamingButton.addEventListener('click', () => {
-            if (!socket || socket.readyState !== WebSocket.OPEN) {
-                log("Chưa kết nối đến server");
-                return;
-            }
-
-            isStreaming = true;
-            startStreamingButton.disabled = true;
-            stopStreamingButton.disabled = false;
-            statusElement.textContent = "Đang phân tích hình ảnh...";
-
-            // Khởi tạo canvas
+        startAnalysis.onclick = async () => {
+            statusEl.textContent = "Đang phân tích...";
+            // chụp frame
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            const context = canvas.getContext('2d');
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(video, 0, 0);
+            const b64 = canvas.toDataURL("image/jpeg", 0.8);
 
-            // Gửi hình ảnh theo định kỳ
-            streamInterval = setInterval(() => {
-                if (!isStreaming) return;
-
-                try {
-                    // Vẽ hình ảnh từ video lên canvas
-                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                    // Chuyển đổi thành base64
-                    const imageData = canvas.toDataURL('image/jpeg', 0.7);
-
-                    // Gửi đến server
-                    if (socket && socket.readyState === WebSocket.OPEN) {
-                        socket.send(imageData);
-                    }
-
-                    // Giả lập dữ liệu cảm biến siêu âm (trong thực tế bạn sẽ đọc từ Arduino)
-                    simulateSensorData();
-
-                } catch (err) {
-                    log(`Lỗi xử lý hình ảnh: ${err.message}`);
-                }
-            }, 200); // Gửi 5 khung hình/giây
-
-            log("Bắt đầu phân tích hình ảnh");
-        });
-
-        // Dừng streaming
-        stopStreamingButton.addEventListener('click', () => {
-            isStreaming = false;
-            if (streamInterval) {
-                clearInterval(streamInterval);
-                streamInterval = null;
+            try {
+                const res = await fetch("/upload", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image: b64 })
+                });
+                const data = await res.json();
+                if (data.error) throw data.error;
+                detectionInfo.innerHTML = `
+          <div>Loại rác: <strong>${data.waste_type || 'unknown'}</strong></div>
+          <div>Chi tiết: ${data.specific_waste || 'unknown'}</div>
+          <div>Độ tin cậy: ${(data.confidence * 100 || 0).toFixed(2)}%</div>
+        `;
+                statusEl.textContent = "Phân tích xong";
+                log("Result: " + JSON.stringify(data));
+            } catch (err) {
+                statusEl.textContent = "Phân tích lỗi";
+                log("Analysis error: " + err);
             }
-            startStreamingButton.disabled = false;
-            stopStreamingButton.disabled = true;
-            statusElement.textContent = "Đã dừng phân tích";
-            log("Đã dừng phân tích hình ảnh");
-        });
-
-        // Giả lập dữ liệu cảm biến (trong thực tế, bạn sẽ đọc dữ liệu từ Arduino)
-        function simulateSensorData() {
-            // Trong thực tế, bạn sẽ đọc dữ liệu từ Arduino qua Serial
-            // Đây chỉ là giả lập để demo giao diện
-
-            if (socket && socket.readyState === WebSocket.OPEN && Math.random() > 0.7) {
-                // Gửi dữ liệu cảm biến siêu âm (khoảng cách)
-                const distance = Math.floor(Math.random() * 50) + 1; // 1-50cm
-                const sensorData = JSON.stringify({ distance: distance });
-                socket.send(sensorData);
-
-                // Hiển thị lên giao diện
-                distanceSensor.textContent = `${distance} cm`;
-            }
-        }
-
-        // Kiểm tra trạng thái khi trang được tải
-        document.addEventListener('DOMContentLoaded', () => {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                statusElement.textContent = "Trình duyệt không hỗ trợ webcam.";
-                startButton.disabled = true;
-                log("Trình duyệt không hỗ trợ webcam");
-            } else {
-                statusElement.textContent = "Sẵn sàng. Nhấn 'Bật Camera' để bắt đầu.";
-                log("Hệ thống đã sẵn sàng");
-            }
-        });
+        };
     </script>
 </body>
 

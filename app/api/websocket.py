@@ -15,10 +15,6 @@ templates = Jinja2Templates(directory="app/templates")
 # Store Raspberry Pi connection
 raspberry_connection: WebSocket = None
 
-@router.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
