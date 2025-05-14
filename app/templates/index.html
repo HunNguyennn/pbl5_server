@@ -1,198 +1,398 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>Raspberry Pi - Thùng Rác Thông Minh</title>
-    <link rel="icon" href="/static/favicon.ico">
-
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thùng Rác Thông Minh - Camera Feed</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .video-container {
-            margin-bottom: 20px;
+        .camera-container {
             position: relative;
+            margin: 0 auto;
+            width: 100%;
+            max-width: 640px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         #video {
-            border: 3px solid #333;
-            border-radius: 10px;
             width: 100%;
-            max-width: 640px;
+            height: auto;
+            background-color: #000;
+            border-radius: 8px;
+            display: block;
         }
 
         #canvas {
             display: none;
         }
 
-        #photo {
-            border: 3px solid #333;
-            border-radius: 10px;
-            width: 100%;
-            max-width: 640px;
-            margin-top: 20px;
-        }
-
-        .button-container {
-            margin: 20px 0;
-        }
-
-        button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 10px 20px;
+        .overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
             text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 5px;
-            cursor: pointer;
-            border-radius: 5px;
         }
 
-        button:hover {
-            background-color: #45a049;
-        }
-
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-
-        .status {
-            margin: 10px 0;
-            font-weight: bold;
-        }
-
-        .info-container {
-            margin-top: 20px;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-        }
-
-        .sensor-data {
+        .camera-controls {
+            margin-top: 1rem;
             display: flex;
-            justify-content: space-around;
-            margin-top: 15px;
+            justify-content: center;
+            gap: 1rem;
         }
 
-        .data-item {
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+        .result-container {
+            margin-top: 2rem;
+            display: none;
+        }
+
+        .image-result {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .classification-details {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .upload-container {
+            background-color: #f8f9fa;
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-container:hover {
+            border-color: #6c757d;
+            background-color: #e9ecef;
+        }
+
+        .tab-content {
+            padding: 1.5rem;
             background-color: #fff;
-            min-width: 120px;
+            border-radius: 0 0 8px 8px;
+            border: 1px solid #dee2e6;
+            border-top: none;
         }
 
-        .console {
-            width: 100%;
-            height: 150px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            padding: 10px;
-            margin-top: 20px;
-            text-align: left;
-            font-family: monospace;
-            background-color: #f3f3f3;
+        .nav-tabs .nav-link {
+            font-weight: 500;
         }
     </style>
 </head>
 
 <body>
-    <h1>Raspberry Pi - Thùng Rác Thông Minh</h1>
-    <p><a href="/dashboard"><button>Xem Dashboard</button></a></p>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-recycle me-2"></i>Thùng Rác Thông Minh
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard">
+                            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/dashboard/history">
+                            <i class="bi bi-clock-history me-1"></i> Lịch Sử Phát Hiện
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/">
+                            <i class="bi bi-camera-video me-1"></i> Camera Feed
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
 
-    <div class="container">
-        <video id="video" autoplay playsinline></video>
-        <div class="button-container">
-            <button id="startCamera">Bật Camera</button>
-            <button id="startAnalysis" disabled>Bắt Đầu Phân Tích</button>
+    <div class="container mt-4">
+        <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera-panel"
+                    type="button" role="tab">
+                    <i class="bi bi-camera-video me-1"></i> Camera
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-panel"
+                    type="button" role="tab">
+                    <i class="bi bi-upload me-1"></i> Tải Ảnh Lên
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="info-tab" data-bs-toggle="tab" data-bs-target="#info-panel" type="button"
+                    role="tab">
+                    <i class="bi bi-info-circle me-1"></i> Thông Tin
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="analysisTabsContent">
+            <!-- Camera Panel -->
+            <div class="tab-pane fade show active" id="camera-panel" role="tabpanel" aria-labelledby="camera-tab">
+                <div class="row">
+                    <div class="col-md-12 text-center mb-4">
+                        <h4><i class="bi bi-camera me-2"></i>Camera Feed</h4>
+                        <p class="text-muted">Nhấn "Bắt đầu camera" để mở camera, sau đó chụp ảnh để phân tích</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="camera-container">
+                            <video id="video" autoplay playsinline muted></video>
+                            <canvas id="canvas"></canvas>
+                            <div class="status-badge" id="camera-status">Camera đang tắt</div>
+                        </div>
+
+                        <div class="camera-controls mt-3">
+                            <button id="start-camera" class="btn btn-primary">
+                                <i class="bi bi-camera-video me-1"></i>Bắt đầu camera
+                            </button>
+                            <button id="stop-camera" class="btn btn-secondary" disabled>
+                                <i class="bi bi-camera-video-off me-1"></i>Dừng camera
+                            </button>
+                            <button id="capture" class="btn btn-success" disabled>
+                                <i class="bi bi-camera me-1"></i>Chụp ảnh
+                            </button>
+                            <button id="analyze" class="btn btn-info text-white" disabled>
+                                <i class="bi bi-search me-1"></i>Bắt đầu phân tích
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row result-container" id="result-section">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-image me-2"></i>Ảnh chụp
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="captured-image" class="image-result">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-graph-up me-2"></i>Kết quả phân tích
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="result-image" class="image-result">
+                                <div class="classification-details mt-3" id="result-details">
+                                    <h5 class="mb-3"><i class="bi bi-tag me-2"></i>Phân loại</h5>
+                                    <div id="loading-result" class="d-none">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Đang tải...</span>
+                                        </div>
+                                        <p class="mt-2">Đang phân tích...</p>
+                                    </div>
+                                    <div id="result-content"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Upload Panel -->
+            <div class="tab-pane fade" id="upload-panel" role="tabpanel" aria-labelledby="upload-tab">
+                <div class="row">
+                    <div class="col-md-12 text-center mb-4">
+                        <h4><i class="bi bi-upload me-2"></i>Tải ảnh lên</h4>
+                        <p class="text-muted">Tải lên ảnh để phân tích rác</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <div id="upload-container" class="upload-container">
+                            <i class="bi bi-cloud-arrow-up fs-1 mb-3"></i>
+                            <h5>Kéo thả ảnh vào đây</h5>
+                            <p>hoặc</p>
+                            <input type="file" id="file-input" class="d-none" accept="image/*">
+                            <button id="browse-button" class="btn btn-primary">
+                                <i class="bi bi-folder me-1"></i>Chọn ảnh từ máy tính
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row result-container" id="upload-result-section">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-image me-2"></i>Ảnh đã tải lên
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="uploaded-image" class="image-result">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-graph-up me-2"></i>Kết quả phân tích
+                            </div>
+                            <div class="card-body text-center">
+                                <img id="upload-result-image" class="image-result">
+                                <div class="classification-details mt-3" id="upload-result-details">
+                                    <h5 class="mb-3"><i class="bi bi-tag me-2"></i>Phân loại</h5>
+                                    <div id="upload-loading-result" class="d-none">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Đang tải...</span>
+                                        </div>
+                                        <p class="mt-2">Đang phân tích...</p>
+                                    </div>
+                                    <div id="upload-result-content"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-grid mt-3">
+                            <button id="analyze-upload" class="btn btn-info text-white" disabled>
+                                <i class="bi bi-search me-1"></i>Phân tích ảnh đã tải lên
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info Panel -->
+            <div class="tab-pane fade" id="info-panel" role="tabpanel" aria-labelledby="info-tab">
+                <div class="row">
+                    <div class="col-md-12 text-center mb-4">
+                        <h4><i class="bi bi-info-circle me-2"></i>Thông tin phân loại</h4>
+                        <p class="text-muted">Thông tin về các loại rác và cách phân loại</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header bg-success text-white">
+                                <i class="bi bi-tree me-2"></i>Rác hữu cơ
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">Các loại rác hữu cơ</h5>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        Vỏ rau củ, trái cây
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        Thức ăn thừa
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        Lá cây, cỏ
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        Bã trà, bã cà phê
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header bg-primary text-white">
+                                <i class="bi bi-trash me-2"></i>Rác vô cơ
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">Các loại rác vô cơ</h5>
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle-fill text-primary me-2"></i>
+                                        Chai nhựa, lon kim loại
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle-fill text-primary me-2"></i>
+                                        Giấy, cốc giấy, bìa carton
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle-fill text-primary me-2"></i>
+                                        Túi nilon, bao bì, các loại hộp đựng
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle-fill text-primary me-2"></i>
+                                        Vỏ trứng
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-2">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <i class="bi bi-lightbulb me-2"></i>Lợi ích của việc phân loại rác
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h5>Lợi ích môi trường</h5>
+                                        <ul>
+                                            <li>Giảm ô nhiễm môi trường</li>
+                                            <li>Tiết kiệm tài nguyên thiên nhiên</li>
+                                            <li>Giảm lượng rác thải ra bãi chôn lấp</li>
+                                            <li>Giảm phát thải khí nhà kính</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h5>Lợi ích kinh tế</h5>
+                                        <ul>
+                                            <li>Tạo việc làm trong ngành công nghiệp tái chế</li>
+                                            <li>Tiết kiệm chi phí xử lý rác thải</li>
+                                            <li>Cung cấp nguyên liệu tái chế cho sản xuất</li>
+                                            <li>Giảm chi phí sản xuất từ nguyên liệu mới</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="status" id="status">Sẵn sàng</div>
-        <canvas id="canvas" style="display:none;"></canvas>
-        <div class="info-container">
-            <h3>Thông Tin Phân Loại</h3>
-            <div id="detectionInfo">Chưa phân tích</div>
-        </div>
-        <div class="console" id="console"></div>
     </div>
 
-    <script>
-        const video = document.getElementById("video");
-        const canvas = document.getElementById("canvas");
-        const startCamera = document.getElementById("startCamera");
-        const startAnalysis = document.getElementById("startAnalysis");
-        const statusEl = document.getElementById("status");
-        const detectionInfo = document.getElementById("detectionInfo");
-        const consoleEl = document.getElementById("console");
-
-        function log(msg) {
-            const t = new Date().toLocaleTimeString();
-            consoleEl.innerHTML += `<div>[${t}] ${msg}</div>`;
-            consoleEl.scrollTop = consoleEl.scrollHeight;
-        }
-
-        startCamera.onclick = async () => {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-                startCamera.disabled = true;
-                startAnalysis.disabled = false;
-                statusEl.textContent = "Camera đã kết nối";
-                log("Camera ready");
-            } catch (e) {
-                statusEl.textContent = "Không thể truy cập camera";
-                log("Camera error: " + e.message);
-            }
-        };
-
-        startAnalysis.onclick = async () => {
-            statusEl.textContent = "Đang phân tích...";
-            // chụp frame
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext("2d");
-            ctx.drawImage(video, 0, 0);
-            const b64 = canvas.toDataURL("image/jpeg", 0.8);
-
-            try {
-                const res = await fetch("/upload", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ image: b64 })
-                });
-                const data = await res.json();
-                if (data.error) throw data.error;
-                detectionInfo.innerHTML = `
-          <div>Loại rác: <strong>${data.waste_type || 'unknown'}</strong></div>
-          <div>Chi tiết: ${data.specific_waste || 'unknown'}</div>
-          <div>Độ tin cậy: ${(data.confidence * 100 || 0).toFixed(2)}%</div>
-        `;
-                statusEl.textContent = "Phân tích xong";
-                log("Result: " + JSON.stringify(data));
-            } catch (err) {
-                statusEl.textContent = "Phân tích lỗi";
-                log("Analysis error: " + err);
-            }
-        };
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/index.js"></script>
 </body>
 
 </html>

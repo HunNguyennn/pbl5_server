@@ -5,7 +5,7 @@ Write-Host "Initializing database..."
 & "$PSScriptRoot/../venv310/Scripts/Activate.ps1"
 
 # Chạy đoạn script Python
-python -Command @"
+python -c @"
 from app.dashboard import init_database
 init_database()
 "@

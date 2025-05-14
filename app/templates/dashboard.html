@@ -6,70 +6,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Thùng Rác Thông Minh - Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Sửa đường dẫn cho đúng với cấu trúc thư mục -->
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f8f9fa;
-        }
-
-        .card {
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-
-        .card-header {
-            font-weight: bold;
-            background-color: #f1f3f5;
-        }
-
-        .status-indicator {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 5px;
-        }
-
-        .status-active {
-            background-color: #28a745;
-        }
-
-        .status-inactive {
-            background-color: #dc3545;
-        }
-
-        .waste-organic {
-            color: #28a745;
-        }
-
-        .waste-inorganic {
-            color: #dc3545;
-        }
-
-        #realtime-feed {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-    </style>
 </head>
 
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="#">🗑️ Thùng Rác Thông Minh</a>
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-recycle me-2"></i>Thùng Rác Thông Minh
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link active" href="/dashboard">Dashboard</a>
+                        <a class="nav-link active" href="/dashboard">
+                            <i class="bi bi-speedometer2 me-1"></i> Dashboard
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/">Camera Feed</a>
+                        <a class="nav-link" href="/dashboard/history">
+                            <i class="bi bi-clock-history me-1"></i> Lịch Sử Phát Hiện
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">
+                            <i class="bi bi-camera-video me-1"></i> Camera Feed
+                        </a>
                     </li>
                 </ul>
             </div>
@@ -79,18 +45,25 @@
     <div class="container mt-4">
         <div class="row">
             <div class="col-md-12">
-                <div class="alert alert-info" role="alert">
+                <div class="alert alert-system-status" role="alert">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h4 class="alert-heading">System Status</h4>
-                            <p id="system-status">
-                                <span class="status-indicator status-active"></span> System active
-                                | Last update: <span id="last-update-time">-</span>
-                                | Current distance: <span id="current-distance">-</span> cm
+                            <h4 class="alert-heading">
+                                <i class="bi bi-info-circle me-2"></i>Trạng Thái Hệ Thống
+                            </h4>
+                            <p id="system-status" class="mb-0">
+                                <span class="status-indicator status-active"></span> Hệ thống đang hoạt động
+                                | Cập nhật lần cuối: <span id="last-update-time" class="fw-bold">-</span>
+                                | Khoảng cách hiện tại: <span id="current-distance" class="fw-bold">-</span> cm
                             </p>
                         </div>
                         <div>
-                            <button id="reset-stats" class="btn btn-sm btn-warning">Reset Statistics</button>
+                            <a href="/dashboard/history" class="btn btn-sm btn-primary me-2">
+                                <i class="bi bi-images me-1"></i> Xem Lịch Sử Phát Hiện
+                            </a>
+                            <button id="reset-stats" class="btn btn-sm btn-warning">
+                                <i class="bi bi-arrow-repeat me-1"></i> Reset Thống Kê
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -102,24 +75,24 @@
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
-                        Tổng quan phân loại
+                        <span><i class="bi bi-pie-chart-fill me-2"></i>Tổng quan phân loại</span>
                     </div>
                     <div class="card-body">
                         <div class="text-center mb-4">
                             <canvas id="waste-pie-chart"></canvas>
                         </div>
-                        <div class="d-flex justify-content-around text-center">
-                            <div>
-                                <h3 id="organic-count" class="waste-organic">0</h3>
-                                <p>Hữu cơ</p>
+                        <div class="stats-container">
+                            <div class="stats-item">
+                                <span id="organic-count" class="stats-value waste-organic">0</span>
+                                <span class="stats-label">Hữu cơ</span>
                             </div>
-                            <div>
-                                <h3 id="inorganic-count" class="waste-inorganic">0</h3>
-                                <p>Vô cơ</p>
+                            <div class="stats-item">
+                                <span id="inorganic-count" class="stats-value waste-inorganic">0</span>
+                                <span class="stats-label">Vô cơ</span>
                             </div>
-                            <div>
-                                <h3 id="total-count">0</h3>
-                                <p>Tổng cộng</p>
+                            <div class="stats-item">
+                                <span id="total-count" class="stats-value">0</span>
+                                <span class="stats-label">Tổng cộng</span>
                             </div>
                         </div>
                     </div>
@@ -130,7 +103,7 @@
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
-                        Chi tiết theo loại rác
+                        <span><i class="bi bi-bar-chart-fill me-2"></i>Chi tiết theo loại rác</span>
                     </div>
                     <div class="card-body">
                         <canvas id="specific-waste-chart"></canvas>
@@ -142,10 +115,11 @@
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
-                        Phân loại mới nhất
+                        <span><i class="bi bi-activity me-2"></i>Phân loại mới nhất</span>
                     </div>
                     <div class="card-body" id="realtime-feed">
-                        <div class="text-center" id="no-data-message">
+                        <div class="empty-state" id="no-data-message">
+                            <i class="bi bi-inbox"></i>
                             <p class="text-muted">Chưa có dữ liệu</p>
                         </div>
                         <ul class="list-group" id="recent-records">
@@ -161,10 +135,38 @@
             <div class="col-md-12">
                 <div class="card">
                     <div class="card-header">
-                        Dữ liệu phân loại theo ngày (7 ngày gần nhất)
+                        <span><i class="bi bi-graph-up me-2"></i>Dữ liệu phân loại theo ngày (7 ngày gần nhất)</span>
                     </div>
                     <div class="card-body">
                         <canvas id="daily-stats-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Phần hiển thị phát hiện gần đây với ảnh -->
+        <div class="row mt-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <span><i class="bi bi-images me-2"></i>Các phát hiện gần đây</span>
+                        <a href="/dashboard/history" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye me-1"></i>Xem tất cả
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="row" id="recent-detections">
+                            <div class="col-12 text-center py-3" id="detection-loading">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Đang tải...</span>
+                                </div>
+                                <span class="ms-2 text-primary">Đang tải phát hiện gần đây...</span>
+                            </div>
+                            <div class="col-12 empty-state d-none" id="no-detections">
+                                <i class="bi bi-camera"></i>
+                                <p class="text-muted">Chưa có phát hiện nào được lưu lại.</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

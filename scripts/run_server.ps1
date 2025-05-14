@@ -19,11 +19,20 @@ if (Test-Path $envFile) {
         }
 }
 
-# Chạy FastAPI server bằng uvicorn
+# Kiểm tra xem biến môi trường có SSL được kích hoạt không
+# Mặc định là True - nghĩa là sử dụng localhost (secure context)
+$useSSL = $env:USE_SSL -ne "False"
 $serverHost = $env:HOST
 $serverPort = $env:PORT
 
-if (-not $serverHost) { $serverHost = "0.0.0.0" }
+if (-not $serverHost) { $serverHost = "127.0.0.1" }
 if (-not $serverPort) { $serverPort = "8000" }
 
+# Hiển thị thông tin server sẽ chạy
+Write-Host "Starting server with configuration:"
+Write-Host "Host: $serverHost"
+Write-Host "Port: $serverPort"
+Write-Host "Secure context available: Yes (localhost)"
+
+# Chạy FastAPI server bằng uvicorn
 uvicorn app.main:app --host $serverHost --port $serverPort --reload

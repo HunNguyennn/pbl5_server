@@ -9,6 +9,12 @@ const dashboardWs = new WebSocket(`ws://${window.location.host}/dashboard/ws`);
 
 dashboardWs.onopen = () => {
     console.log('WS /dashboard/ws connected');
+    // Gửi ping mỗi 30 giây để giữ kết nối
+    setInterval(() => {
+        if (dashboardWs.readyState === WebSocket.OPEN) {
+            dashboardWs.send('ping');
+        }
+    }, 30000);
 };
 
 dashboardWs.onmessage = event => {
@@ -23,43 +29,69 @@ dashboardWs.onerror = err => console.error('WS error:', err);
 // Cập nhật UI khi nhận dữ liệu mới
 function updateDashboard(data) {
     // Cập nhật thời gian
-    document.getElementById('last-update-time').innerText = new Date().toLocaleTimeString();
+    document.getElementById('last-update-time').innerText = new Date().toLocaleString('vi-VN', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    });
 
-    // Cập nhật khoảng cách cảm biến
-    if (data.sensor && data.sensor.distance !== undefined) {
-        document.getElementById('current-distance').innerText = data.sensor.distance.toFixed(1);
+    // Cập nhật khoảng cách hiện tại (nếu có)
+    if (data.sensor && data.sensor.distance) {
+        document.getElementById('current-distance').innerText = data.sensor.distance;
     }
 
-    // Cập nhật feed phân loại mới nhất
+    // Thêm bản ghi mới vào feed
     if (data.recent_records && data.recent_records.length > 0) {
-        const noDataEl = document.getElementById('no-data-message');
-        if (noDataEl) noDataEl.remove();
+        const recentRecords = document.getElementById('recent-records');
+        const noDataMessage = document.getElementById('no-data-message');
 
-        const ul = document.getElementById('recent-records');
-        const r = data.recent_records[0];
-        const time = new Date(r.timestamp).toLocaleTimeString();
+        // Ẩn thông báo không có dữ liệu
+        noDataMessage.style.display = 'none';
 
-        const li = document.createElement('li');
-        li.className = `list-group-item ${r.waste_type === 'huu_co' ? 'waste-organic' : 'waste-inorganic'}`;
-        li.innerHTML = `
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <strong>${r.specific_waste}</strong>
-          <span class="badge ms-2 ${r.waste_type === 'huu_co' ? 'bg-success' : 'bg-danger'}">
-            ${r.waste_type === 'huu_co' ? 'Hữu cơ' : 'Vô cơ'}
-          </span>
-        </div>
-        <small>${time}</small>
-      </div>
-      <div>Độ tin cậy: ${(r.confidence * 100).toFixed(1)}%</div>
-    `;
+        data.recent_records.forEach(r => {
+            const li = document.createElement('li');
+            const time = new Date(r.timestamp).toLocaleString('vi-VN', {
+                timeZone: 'Asia/Ho_Chi_Minh',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
 
-        ul.prepend(li);
-        if (ul.children.length > 10) ul.removeChild(ul.lastChild);
+            li.className = `list-group-item ${r.waste_type === 'huu_co' ? 'waste-organic' : 'waste-inorganic'}`;
+
+            li.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong>${r.specific_waste}</strong>
+                        <span class="badge ms-2 ${r.waste_type === 'huu_co' ? 'bg-success' : 'bg-danger'}">
+                            ${r.waste_type === 'huu_co' ? 'Hữu cơ' : 'Vô cơ'}
+                        </span>
+                    </div>
+                    <small>${time}</small>
+                </div>
+                <div>
+                    Độ tin cậy: <span class="fw-bold">${(r.confidence * 100).toFixed(1)}%</span>
+                </div>
+            `;
+
+            // Thêm bản ghi mới vào đầu danh sách
+            recentRecords.insertBefore(li, recentRecords.firstChild);
+
+            // Giới hạn số lượng bản ghi hiển thị (chỉ hiển thị 5 bản ghi gần nhất)
+            if (recentRecords.children.length > 5) {
+                recentRecords.removeChild(recentRecords.lastChild);
+            }
+        });
     }
 
-    // Nếu cần reload thống kê
-    if (data.stats_updated) loadStatistics();
+    // Cập nhật số liệu thống kê nếu có thay đổi
+    if (data.stats_updated) {
+        loadStatistics();
+        loadRecentDetections();
+    }
 }
 
 // Fetch và cập nhật các biểu đồ thống kê toàn cục
@@ -84,38 +116,187 @@ async function loadStatistics() {
     }
 }
 
+// Tải danh sách phát hiện gần đây
+async function loadRecentDetections() {
+    try {
+        const detectionsContainer = document.getElementById('recent-detections');
+        const loadingElement = document.getElementById('detection-loading');
+        const noDetectionsElement = document.getElementById('no-detections');
+
+        // Hiển thị loading
+        loadingElement.classList.remove('d-none');
+        noDetectionsElement.classList.add('d-none');
+
+        // Xóa các detection cũ (nếu có)
+        const elementsToRemove = detectionsContainer.querySelectorAll('.col-md-3');
+        elementsToRemove.forEach(el => el.remove());
+
+        // Tải dữ liệu từ API
+        const response = await fetch('/api/detections?limit=8');
+        const data = await response.json();
+
+        // Ẩn loading
+        loadingElement.classList.add('d-none');
+
+        // Kiểm tra xem có dữ liệu không
+        if (!data.detections || data.detections.length === 0) {
+            noDetectionsElement.classList.remove('d-none');
+            return;
+        }
+
+        // Hiển thị các phát hiện
+        data.detections.forEach(detection => {
+            const col = document.createElement('div');
+            col.className = 'col-md-3 col-sm-6 mb-4';
+
+            const wasteTypeText = detection.waste_type === 'huu_co' ? 'Hữu cơ' : 'Vô cơ';
+            const badgeClass = detection.waste_type === 'huu_co' ? 'bg-success' : 'bg-danger';
+
+            // Định dạng thời gian với múi giờ Việt Nam
+            const formattedDate = new Date(detection.timestamp).toLocaleString('vi-VN', {
+                timeZone: 'Asia/Ho_Chi_Minh',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false
+            });
+
+            col.innerHTML = `
+                <div class="card detection-tile">
+                    <div class="card-body p-3">
+                        <span class="badge ${badgeClass} detection-badge">${wasteTypeText}</span>
+                        <a href="/dashboard/history" title="Xem chi tiết">
+                            <img src="/static/images/default_detection.jpg" onerror="this.src='/static/images/default_detection.jpg'" data-src="${detection.result_image}" class="recent-detection-img img-fluid" style="width: 100%; height: auto; object-fit: contain;" />
+                        </a>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong>${detection.specific_waste}</strong>
+                            <small>${(detection.confidence * 100).toFixed(1)}%</small>
+                        </div>
+                        <small class="text-muted">${formattedDate}</small>
+                    </div>
+                </div>
+            `;
+
+            detectionsContainer.appendChild(col);
+
+            // Tải ảnh sau khi đã thêm vào DOM
+            setTimeout(() => {
+                const img = col.querySelector('.recent-detection-img');
+                if (img && img.dataset.src) {
+                    img.onerror = function () {
+                        this.src = '/static/images/default_detection.jpg';
+                        this.onerror = null;
+                    };
+                    img.src = img.dataset.src;
+                }
+            }, 100);
+        });
+    } catch (error) {
+        console.error('Error loading recent detections:', error);
+        document.getElementById('detection-loading').classList.add('d-none');
+
+        const noDetections = document.getElementById('no-detections');
+        noDetections.classList.remove('d-none');
+        noDetections.querySelector('p').textContent = 'Lỗi khi tải dữ liệu phát hiện.';
+    }
+}
+
 function drawPie(organic, inorganic) {
     const ctx = document.getElementById('waste-pie-chart').getContext('2d');
+
+    const data = {
+        labels: ['Hữu cơ', 'Vô cơ'],
+        datasets: [{
+            data: [organic, inorganic],
+            backgroundColor: ['#28a745', '#dc3545'],
+            borderColor: ['#1e7e34', '#bd2130'],
+            borderWidth: 1
+        }]
+    };
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    boxWidth: 15,
+                    padding: 15
+                }
+            }
+        }
+    };
+
     if (pieChart) {
-        pieChart.data.datasets[0].data = [organic, inorganic];
+        pieChart.data = data;
         pieChart.update();
         return;
     }
+
     pieChart = new Chart(ctx, {
         type: 'pie',
-        data: {
-            labels: ['Hữu cơ', 'Vô cơ'],
-            datasets: [{ data: [organic, inorganic] }]
-        }
+        data: data,
+        options: options
     });
 }
 
 function drawSpecific(data) {
     const ctx = document.getElementById('specific-waste-chart').getContext('2d');
-    const labels = Object.keys(data);
-    const vals = Object.values(data);
+
+    // Sắp xếp dữ liệu
+    const sortedLabels = Object.keys(data).sort((a, b) => data[b] - data[a]);
+    const values = sortedLabels.map(label => data[label]);
+
+    // Tạo màu ngẫu nhiên cho các loại rác
+    const colors = sortedLabels.map(() => {
+        const r = Math.floor(Math.random() * 200);
+        const g = Math.floor(Math.random() * 200);
+        const b = Math.floor(Math.random() * 200);
+        return `rgba(${r}, ${g}, ${b}, 0.8)`;
+    });
+
+    const chartData = {
+        labels: sortedLabels,
+        datasets: [{
+            label: 'Số lượng',
+            data: values,
+            backgroundColor: colors,
+            borderColor: colors.map(c => c.replace('0.8', '1')),
+            borderWidth: 1
+        }]
+    };
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    precision: 0
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    };
+
     if (specificWasteChart) {
-        specificWasteChart.data.labels = labels;
-        specificWasteChart.data.datasets[0].data = vals;
+        specificWasteChart.data = chartData;
         specificWasteChart.update();
         return;
     }
+
     specificWasteChart = new Chart(ctx, {
         type: 'bar',
-        data: {
-            labels,
-            datasets: [{ label: 'Số lượng', data: vals }]
-        }
+        data: chartData,
+        options: options
     });
 }
 
@@ -124,22 +305,59 @@ function drawDaily(data) {
     const dates = Object.keys(data).sort();
     const orgArr = dates.map(d => data[d].huu_co || 0);
     const inoArr = dates.map(d => data[d].vo_co || 0);
+
+    const chartData = {
+        labels: dates,
+        datasets: [
+            {
+                label: 'Hữu cơ',
+                data: orgArr,
+                fill: true,
+                backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                borderColor: 'rgba(40, 167, 69, 1)',
+                borderWidth: 2,
+                tension: 0.4
+            },
+            {
+                label: 'Vô cơ',
+                data: inoArr,
+                fill: true,
+                backgroundColor: 'rgba(220, 53, 69, 0.2)',
+                borderColor: 'rgba(220, 53, 69, 1)',
+                borderWidth: 2,
+                tension: 0.4
+            }
+        ]
+    };
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: true,
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    precision: 0
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'top',
+            }
+        }
+    };
+
     if (dailyStatsChart) {
-        dailyStatsChart.data.labels = dates;
-        dailyStatsChart.data.datasets[0].data = orgArr;
-        dailyStatsChart.data.datasets[1].data = inoArr;
+        dailyStatsChart.data = chartData;
         dailyStatsChart.update();
         return;
     }
+
     dailyStatsChart = new Chart(ctx, {
         type: 'line',
-        data: {
-            labels: dates,
-            datasets: [
-                { label: 'Hữu cơ', data: orgArr, fill: true },
-                { label: 'Vô cơ', data: inoArr, fill: true }
-            ]
-        }
+        data: chartData,
+        options: options
     });
 }
 
@@ -149,10 +367,17 @@ if (btnReset) {
     btnReset.addEventListener('click', async () => {
         if (!confirm('Bạn có chắc chắn reset thống kê?')) return;
         try {
-            const r = await fetch('/api/stats/reset', { method: 'POST' });
+            const r = await fetch('/api/reset', { method: 'POST' });
             if (r.ok) {
                 alert('Đã reset');
                 loadStatistics();
+                // Xóa feed phân loại mới nhất
+                const ul = document.getElementById('recent-records');
+                ul.innerHTML = '';
+                // Hiển thị lại thông báo không có dữ liệu
+                document.getElementById('no-data-message').style.display = 'block';
+                // Reset phần phát hiện gần đây
+                loadRecentDetections();
             } else {
                 alert('Reset thất bại');
             }
@@ -166,6 +391,7 @@ if (btnReset) {
 // Khởi tạo khi tải trang
 window.addEventListener('DOMContentLoaded', () => {
     loadStatistics();
+    loadRecentDetections();
     fetch('/api/realtime')
         .then(r => r.json())
         .then(d => updateDashboard({ ...d, stats_updated: false }));

@@ -3,8 +3,12 @@ uvicorn
 jinja2
 numpy
 opencv-python
+SQLAlchemy
+aiofiles
 python-dotenv
 tensorflow
 pytest
 httpx
 websockets
+python-multipart
+zeroconf

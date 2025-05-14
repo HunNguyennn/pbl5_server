@@ -14,30 +14,49 @@ templates = Jinja2Templates(directory="app/templates")
 
 # Khởi tạo database nếu chưa có
 def init_database():
-    db_path = "waste_stats.db"
-    if not os.path.exists(db_path):
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute('''
-        CREATE TABLE waste_records (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            waste_type TEXT NOT NULL,
-            specific_waste TEXT NOT NULL,
-            confidence REAL NOT NULL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-        ''')
-        
-        cursor.execute('''
-        CREATE TABLE sensor_data (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            distance REAL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-        ''')
-        conn.commit()
-        conn.close()
-        print("Database initialized")
+    """
+    Khởi tạo cơ sở dữ liệu nếu chưa tồn tại
+    """
+    conn = sqlite3.connect("waste_stats.db")
+    cursor = conn.cursor()
+    
+    # Tạo bảng waste_records để lưu thông tin về các lần phát hiện rác (không lưu ảnh)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS waste_records (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        waste_type TEXT NOT NULL,
+        specific_waste TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        timestamp DATETIME DEFAULT (datetime('now', '+7 hours'))
+    )
+    ''')
+    
+    # Tạo bảng sensor_data để lưu thông tin từ cảm biến khoảng cách
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS sensor_data (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        distance REAL NOT NULL,
+        timestamp DATETIME DEFAULT (datetime('now', '+7 hours'))
+    )
+    ''')
+    
+    # Tạo bảng waste_detections để lưu chi tiết về các lần phát hiện cùng với hình ảnh
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS waste_detections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        waste_type TEXT NOT NULL,
+        specific_waste TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        processing_time REAL NOT NULL,
+        object_count INTEGER NOT NULL,
+        orig_image TEXT,
+        result_image TEXT,
+        timestamp DATETIME DEFAULT (datetime('now', '+7 hours'))
+    )
+    ''')
+    
+    conn.commit()
+    conn.close()
 
 # Tạo bảng dữ liệu
 init_database()
@@ -49,6 +68,17 @@ def save_waste_record(waste_type, specific_waste, confidence):
     cursor.execute(
         "INSERT INTO waste_records (waste_type, specific_waste, confidence) VALUES (?, ?, ?)",
         (waste_type, specific_waste, confidence)
+    )
+    conn.commit()
+    conn.close()
+
+# Lưu chi tiết phát hiện rác vào database
+def save_waste_detection(waste_type, specific_waste, confidence, processing_time, object_count, orig_image, result_image):
+    conn = sqlite3.connect("waste_stats.db")
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO waste_detections (waste_type, specific_waste, confidence, processing_time, object_count, orig_image, result_image) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (waste_type, specific_waste, confidence, processing_time, object_count, orig_image, result_image)
     )
     conn.commit()
     conn.close()
@@ -122,68 +152,15 @@ async def dashboard(request: Request):
         {"request": request, "stats": stats}
     )
 
-# API endpoint để lấy dữ liệu thống kê
-@dashboard_router.get("/api/stats")
-async def get_stats():
-    return get_waste_statistics()
+# Route cho trang history
+@dashboard_router.get("/dashboard/history", response_class=HTMLResponse)
+async def detection_history(request: Request):
+    return templates.TemplateResponse(
+        "detection_history.html", 
+        {"request": request}
+    )
 
-# API endpoint để lấy dữ liệu thời gian thực
-@dashboard_router.get("/api/realtime")
-async def get_realtime_data():
-    conn = sqlite3.connect("waste_stats.db")
-    cursor = conn.cursor()
-    
-    # Lấy 10 bản ghi mới nhất
-    cursor.execute('''
-    SELECT waste_type, specific_waste, confidence, timestamp
-    FROM waste_records
-    ORDER BY timestamp DESC
-    LIMIT 10
-    ''')
-    recent_records = cursor.fetchall()
-    
-    # Lấy dữ liệu cảm biến mới nhất
-    cursor.execute('''
-    SELECT distance, timestamp
-    FROM sensor_data
-    ORDER BY timestamp DESC
-    LIMIT 1
-    ''')
-    latest_sensor = cursor.fetchone()
-    
-    conn.close()
-    
-    return {
-        "recent_records": [
-            {
-                "waste_type": r[0],
-                "specific_waste": r[1], 
-                "confidence": r[2],
-                "timestamp": r[3]
-            } for r in recent_records
-        ],
-        "sensor": {
-            "distance": latest_sensor[0] if latest_sensor else None,
-            "timestamp": latest_sensor[1] if latest_sensor else None
-        }
-    }
-
-# Thêm endpoint reset thống kê vào dashboard.py
-@dashboard_router.post("/api/stats/reset")
-async def reset_stats():
-    conn = sqlite3.connect("waste_stats.db")
-    cursor = conn.cursor()
-    
-    # Xóa tất cả dữ liệu trong bảng waste_records
-    cursor.execute("DELETE FROM waste_records")
-    
-    # Xóa tất cả dữ liệu trong bảng sensor_data
-    cursor.execute("DELETE FROM sensor_data")
-    
-    conn.commit()
-    conn.close()
-    
-    return {"status": "success", "message": "Statistics reset successfully"}
+# Các API endpoint đã được chuyển sang app/api/stats.py
 
 # WebSocket cho dữ liệu theo thời gian thực
 connections = []
@@ -199,11 +176,10 @@ async def dashboard_ws(websocket: WebSocket):
     except Exception:
         connections.remove(websocket)
 
-# Hàm để broadcast cập nhật đến tất cả kết nối dashboard
+# Broadcast update tới các client
 async def broadcast_update(data):
     for connection in connections:
         try:
-            await connection.send_text(json.dumps(data))
+            await connection.send_json(data)
         except Exception:
-            # Nếu gửi lỗi, bỏ qua
-            pass
+            connections.remove(connection)

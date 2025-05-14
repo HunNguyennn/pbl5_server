@@ -8,6 +8,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from app.services.inference import predict, draw_boxes, labels, waste_categories, get_waste_category
 from app.dashboard import save_waste_record, save_sensor_data, broadcast_update
+from app.core.config import settings
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
