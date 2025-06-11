@@ -12,3 +12,4 @@ httpx
 websockets
 python-multipart
 zeroconf
+itsdangerous

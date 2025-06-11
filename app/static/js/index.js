@@ -201,6 +201,23 @@ document.addEventListener('DOMContentLoaded', function () {
                 </div>
             `;
 
+                // Hiển thị tên loại rác cụ thể tiếng Việt nếu là 1 trong 10 loại mới
+                function getWasteVNName(className) {
+                    switch (className) {
+                        case 'Battery': return 'Pin';
+                        case 'Cigarrette': return 'Đầu lọc thuốc lá';
+                        case 'EggShell': return 'Vỏ trứng';
+                        case 'OrangePeel': return 'Vỏ cam/quýt';
+                        case 'Paper': return 'Giấy';
+                        case 'PaperCup': return 'Cốc giấy';
+                        case 'BananaPeel': return 'Vỏ chuối';
+                        case 'Cans': return 'Lon kim loại';
+                        case 'PlasticBottle': return 'Chai nhựa';
+                        case 'bone': return 'Xương động vật';
+                        default: return className;
+                    }
+                }
+
                 // Add detailed detections if available
                 if (data.detections && data.detections.length > 0) {
                     detailsHTML += `
@@ -217,7 +234,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         detailsHTML += `
                         <li class="list-group-item">
                             <div class="d-flex justify-content-between align-items-center">
-                                <span>${detection.class}</span>
+                                <span>${getWasteVNName(detection.class)}</span>
                                 <div>
                                     <span class="badge bg-${detBadgeColor} me-1">${detWasteTypeText}</span>
                                     <span class="badge bg-dark">${(detection.confidence * 100).toFixed(2)}%</span>

@@ -5,13 +5,15 @@ from fastapi.templating import Jinja2Templates
 import base64, cv2, numpy as np, time
 import logging
 import os
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.logger import init_logger
 from app.core.config import settings
 from app.api.websocket import router as ws_router
-from app.dashboard import dashboard_router, save_waste_record, save_waste_detection, broadcast_update
+from app.dashboard import dashboard_router, save_waste_record, save_waste_detection, broadcast_update, get_user_by_username
 from app.api.stats import router as stats_router
 from app.services.inference import predict, get_waste_category, draw_boxes, labels, waste_categories
+from fastapi import Depends
 
 # Khởi tạo templates cho Jinja2
 templates = Jinja2Templates(directory="app/templates")
@@ -39,6 +41,9 @@ app = FastAPI(
     redoc_url=None,
     openapi_url=None
 )
+
+# Thêm middleware cho session
+app.add_middleware(SessionMiddleware, secret_key="your_secret_key_here")
 
 
 def enhance_image(image):
@@ -86,8 +91,19 @@ def enhance_image(image):
         return image  # Trả về ảnh gốc nếu có lỗi
 
 
+def require_role(role: str):
+    def dependency(request: Request):
+        user = request.session.get("user")
+        if not user or user.get("role") != role:
+            return RedirectResponse("/login", status_code=302)
+    return Depends(dependency)
+
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request):
+    user = request.session.get("user")
+    # Nếu chưa đăng nhập hoặc không phải admin thì chỉ cho xem tab info
+    if not user or user.get("role") != "admin":
+        return templates.TemplateResponse("index.html", {"request": request, "only_info": True})
     return templates.TemplateResponse("index.html", {"request": request})
 
 # Endpoint kiểm tra bằng JSON (chuyển từ root sang /api/status)
@@ -243,7 +259,7 @@ async def upload_image(req: Request):
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # WebSocket router
-app.include_router(ws_router, prefix="/ws")
+app.include_router(ws_router)
 
 # API stats (đảm bảo prefix /api)
 app.include_router(stats_router, prefix="/api")

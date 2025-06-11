@@ -28,6 +28,11 @@ body {
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
     margin-bottom: 20px;
     overflow: hidden;
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: var(--card-shadow);
 }
 
 .card-header {
@@ -160,21 +165,28 @@ body {
     display: flex;
     justify-content: space-around;
     text-align: center;
+    padding: 1rem 0;
+    margin-top: auto;
+    border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .stats-item {
     display: flex;
     flex-direction: column;
+    text-align: center;
+    padding: 0.5rem 1rem;
 }
 
 .stats-value {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 5px;
+    font-size: 1.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    margin-bottom: 0.25rem;
+    color: var(--dark-bg);
 }
 
 .stats-label {
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     color: #6c757d;
 }
 
@@ -419,5 +431,106 @@ body {
 
     .stats-value {
         font-size: 1.5rem;
+    }
+}
+
+/* Styles cho period selector */
+.period-select {
+    width: auto;
+    min-width: 120px;
+    font-size: 0.875rem;
+    padding: 0.25rem 2rem 0.25rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background-color: rgba(255, 255, 255, 0.9);
+    transition: all 0.2s ease;
+}
+
+.period-select:hover {
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 4px rgba(33, 150, 243, 0.1);
+}
+
+.period-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(33, 150, 243, 0.25);
+    outline: none;
+}
+
+/* Styles cho chart containers */
+.chart-container {
+    position: relative;
+    height: 450px;
+    /* Tăng chiều cao mặc định */
+    margin: 1rem 0;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-container canvas {
+    max-width: 100%;
+    margin-bottom: 1rem;
+}
+
+.chart-card {
+    height: 100%;
+}
+
+.chart-card .card-body {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Animation cho charts */
+@keyframes chartFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chart-animate {
+    animation: chartFadeIn 0.5s ease forwards;
+}
+
+/* Tooltip Enhancement */
+.chartjs-tooltip {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(4px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.875rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Responsive adjustments cho charts */
+@media (max-width: 768px) {
+    .period-select {
+        min-width: 110px;
+        font-size: 0.813rem;
+    }
+
+    .chart-container {
+        height: 400px;
+        /* Vẫn giữ chiều cao tương đối trên mobile */
+        padding: 1rem;
+    }
+
+    .card-header {
+        flex-direction: column;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+
+    .card-header .period-select {
+        width: 100%;
     }
 }

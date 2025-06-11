@@ -88,7 +88,7 @@ function renderDetections(detections) {
         col.innerHTML = `
             <div class="card detection-card ${wasteTypeClass}">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <span>${detection.specific_waste}</span>
+                    <span>${getWasteVNName(detection.specific_waste)}</span>
                     <span class="badge ${detection.waste_type === 'huu_co' ? 'bg-success' : 'bg-danger'}">${wasteTypeText}</span>
                 </div>
                 <div class="card-body">
@@ -145,9 +145,14 @@ async function showDetectionDetails(id) {
         modalOrigImg.src = detection.orig_image || '/static/images/default_detection.jpg';
         modalResultImg.src = detection.result_image || '/static/images/default_detection.jpg';
 
-        document.getElementById('modal-waste-name').textContent = detection.specific_waste;
+        document.getElementById('modal-waste-name-vn').textContent = detection.specific_waste;
+        // Thêm hiển thị tên tiếng Anh
+        if (document.getElementById('modal-waste-name-en')) {
+            document.getElementById('modal-waste-name-en').textContent = detection.specific_waste;
+        }
         document.getElementById('modal-waste-type').textContent = detection.waste_type === 'huu_co' ? 'Hữu cơ' : 'Vô cơ';
         document.getElementById('modal-confidence').textContent = (detection.confidence * 100).toFixed(1) + '%';
+        document.getElementById('modal-waste-name-vn').textContent = getWasteVNName(detection.specific_waste);
 
         // Định dạng thời gian với múi giờ Việt Nam (UTC+7)
         document.getElementById('modal-timestamp').textContent = new Date(detection.timestamp)
@@ -259,6 +264,23 @@ function hideNoData() {
     noDataMessage.classList.add('d-none');
 }
 
+// Hiển thị tên loại rác cụ thể tiếng Việt nếu là 1 trong 10 loại mới
+function getWasteVNName(className) {
+    switch (className) {
+        case 'Battery': return 'Pin';
+        case 'Cigarrette': return 'Đầu lọc thuốc lá';
+        case 'EggShell': return 'Vỏ trứng';
+        case 'OrangePeel': return 'Vỏ cam/quýt';
+        case 'Paper': return 'Giấy';
+        case 'PaperCup': return 'Cốc giấy';
+        case 'BananaPeel': return 'Vỏ chuối';
+        case 'Cans': return 'Lon kim loại';
+        case 'PlasticBottle': return 'Chai nhựa';
+        case 'bone': return 'Xương động vật';
+        default: return className;
+    }
+}
+
 // Event Listeners
 applyFilterBtn.addEventListener('click', () => {
     currentFilter = wasteTypeFilter.value;
@@ -279,4 +301,4 @@ window.showDetectionDetails = showDetectionDetails;
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadDetections();
-}); 
+});

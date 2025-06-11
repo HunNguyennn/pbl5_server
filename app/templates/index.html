@@ -101,13 +101,46 @@
         .nav-tabs .nav-link {
             font-weight: 500;
         }
+
+        .image-comparison {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 1rem;
+        }
+
+        .image-container {
+            flex: 1;
+            margin-right: 1rem;
+            position: relative;
+        }
+
+        .image-container:last-child {
+            margin-right: 0;
+        }
+
+        .image-title {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .image-title i {
+            margin-right: 5px;
+        }
     </style>
 </head>
 
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container">
-            <a class="navbar-brand" href="#">
+            <a class="navbar-brand" href="/">
                 <i class="bi bi-recycle me-2"></i>Thùng Rác Thông Minh
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -115,6 +148,7 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    {% if request.session.get('user') %}
                     <li class="nav-item">
                         <a class="nav-link" href="/dashboard">
                             <i class="bi bi-speedometer2 me-1"></i> Dashboard
@@ -125,18 +159,60 @@
                             <i class="bi bi-clock-history me-1"></i> Lịch Sử Phát Hiện
                         </a>
                     </li>
+                    {% if request.session['user']['role'] == 'admin' %}
                     <li class="nav-item">
                         <a class="nav-link active" href="/">
                             <i class="bi bi-camera-video me-1"></i> Camera Feed
                         </a>
                     </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">
+                            <i class="bi bi-box-arrow-right me-1"></i> Đăng xuất ({{ request.session['user']['username']
+                            }})
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register">
+                            <i class="bi bi-person-plus me-1"></i> Đăng ký
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
     </nav>
 
+    <!-- Khu vực giới thiệu và hình ảnh nổi bật -->
+    <div class="container mt-4">
+        <div class="row align-items-center">
+            <div class="col-md-6 text-center text-md-start mb-4 mb-md-0">
+                <h1 class="display-5 fw-bold">Thùng Rác Thông Minh</h1>
+                <p class="lead">Giải pháp phân loại rác tự động bằng AI, giúp bảo vệ môi trường và nâng cao ý thức cộng
+                    đồng.</p>
+                <ul class="list-unstyled">
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i>Phân loại rác hữu cơ/vô cơ tự động</li>
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i>Thống kê, lịch sử phát hiện trực quan
+                    </li>
+                    <li><i class="bi bi-check-circle-fill text-success me-2"></i>Hỗ trợ nhiều vai trò người dùng</li>
+                </ul>
+            </div>
+            <div class="col-md-6 text-center">
+                <img src="/static/images/trashbin.jpg" alt="Thùng rác thông minh" class="img-fluid rounded shadow"
+                    style="max-height: 320px; background: #fff;">
+            </div>
+        </div>
+    </div>
+
     <div class="container mt-4">
         <ul class="nav nav-tabs" id="analysisTabs" role="tablist">
+            {% if not only_info %}
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="camera-tab" data-bs-toggle="tab" data-bs-target="#camera-panel"
                     type="button" role="tab">
@@ -149,15 +225,17 @@
                     <i class="bi bi-upload me-1"></i> Tải Ảnh Lên
                 </button>
             </li>
+            {% endif %}
             <li class="nav-item" role="presentation">
-                <button class="nav-link" id="info-tab" data-bs-toggle="tab" data-bs-target="#info-panel" type="button"
-                    role="tab">
+                <button class="nav-link {% if only_info %}active{% endif %}" id="info-tab" data-bs-toggle="tab"
+                    data-bs-target="#info-panel" type="button" role="tab">
                     <i class="bi bi-info-circle me-1"></i> Thông Tin
                 </button>
             </li>
         </ul>
 
         <div class="tab-content" id="analysisTabsContent">
+            {% if not only_info %}
             <!-- Camera Panel -->
             <div class="tab-pane fade show active" id="camera-panel" role="tabpanel" aria-labelledby="camera-tab">
                 <div class="row">
@@ -287,9 +365,10 @@
                     </div>
                 </div>
             </div>
-
+            {% endif %}
             <!-- Info Panel -->
-            <div class="tab-pane fade" id="info-panel" role="tabpanel" aria-labelledby="info-tab">
+            <div class="tab-pane fade {% if only_info %}show active{% endif %}" id="info-panel" role="tabpanel"
+                aria-labelledby="info-tab">
                 <div class="row">
                     <div class="col-md-12 text-center mb-4">
                         <h4><i class="bi bi-info-circle me-2"></i>Thông tin phân loại</h4>
@@ -306,21 +385,22 @@
                             <div class="card-body">
                                 <h5 class="card-title">Các loại rác hữu cơ</h5>
                                 <ul class="list-group list-group-flush">
-                                    <li class="list-group-item">
-                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                        Vỏ rau củ, trái cây
+                                    <li class="list-group-item"><i
+                                            class="bi bi-check-circle-fill text-success me-2"></i>Cigarrette (đầu lọc
+                                        thuốc lá)
                                     </li>
-                                    <li class="list-group-item">
-                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                        Thức ăn thừa
+                                    <li class="list-group-item"><i
+                                            class="bi bi-check-circle-fill text-success me-2"></i>EggShell (vỏ trứng)
                                     </li>
-                                    <li class="list-group-item">
-                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                        Lá cây, cỏ
+                                    <li class="list-group-item"><i
+                                            class="bi bi-check-circle-fill text-success me-2"></i>OrangePeel (vỏ
+                                        cam/quýt)
                                     </li>
-                                    <li class="list-group-item">
-                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
-                                        Bã trà, bã cà phê
+                                    <li class="list-group-item"><i
+                                            class="bi bi-check-circle-fill text-success me-2"></i>BananaPeel (vỏ chuối)
+                                    </li>
+                                    <li class="list-group-item"><i
+                                            class="bi bi-check-circle-fill text-success me-2"></i>bone (xương động vật)
                                     </li>
                                 </ul>
                             </div>
@@ -334,21 +414,21 @@
                             <div class="card-body">
                                 <h5 class="card-title">Các loại rác vô cơ</h5>
                                 <ul class="list-group list-group-flush">
-                                    <li class="list-group-item">
-                                        <i class="bi bi-check-circle-fill text-primary me-2"></i>
-                                        Chai nhựa, lon kim loại
+                                    <li class="list-group-item"><i
+                                            class="bi bi-check-circle-fill text-primary me-2"></i>Battery (pin)
                                     </li>
-                                    <li class="list-group-item">
-                                        <i class="bi bi-check-circle-fill text-primary me-2"></i>
-                                        Giấy, cốc giấy, bìa carton
+                                    <li class="list-group-item"><i
+                                            class="bi bi-check-circle-fill text-primary me-2"></i>Paper (giấy)
                                     </li>
-                                    <li class="list-group-item">
-                                        <i class="bi bi-check-circle-fill text-primary me-2"></i>
-                                        Túi nilon, bao bì, các loại hộp đựng
+                                    <li class="list-group-item"><i
+                                            class="bi bi-check-circle-fill text-primary me-2"></i>PaperCup (cốc giấy)
                                     </li>
-                                    <li class="list-group-item">
-                                        <i class="bi bi-check-circle-fill text-primary me-2"></i>
-                                        Vỏ trứng
+                                    <li class="list-group-item"><i
+                                            class="bi bi-check-circle-fill text-primary me-2"></i>Cans (lon kim loại)
+                                    </li>
+                                    <li class="list-group-item"><i
+                                            class="bi bi-check-circle-fill text-primary me-2"></i>PlasticBottle (chai
+                                        nhựa)
                                     </li>
                                 </ul>
                             </div>
@@ -386,6 +466,61 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Modal -->
+    <div class="modal fade" id="detectionModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-info-circle me-2"></i>Chi tiết phát hiện
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <p><strong><i class="bi bi-calendar me-2"></i>Thời gian:</strong> <span
+                                    id="modal-timestamp"></span></p>
+                            <p><strong><i class="bi bi-tag me-2"></i>Loại rác:</strong> <span
+                                    id="modal-waste-type"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong><i class="bi bi-check-circle me-2"></i>Độ tin cậy:</strong> <span
+                                    id="modal-confidence"></span></p>
+                            <p><strong><i class="bi bi-hash me-2"></i>Tên loại rác:</strong> <span
+                                    id="modal-waste-name-vn"></span></p>
+                            <p><strong><i class="bi bi-hash me-2"></i>Tên lớp:</strong> <span
+                                    id="modal-waste-name-en"></span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong><i class="bi bi-stopwatch me-2"></i>Thời gian xử lý:</strong> <span
+                                    id="modal-processing-time"></span> giây</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong><i class="bi bi-boxes me-2"></i>Số vật thể:</strong> <span
+                                    id="modal-object-count"></span></p>
+                        </div>
+                    </div>
+                    <div class="image-comparison">
+                        <div class="image-container">
+                            <div class="image-title"><i class="bi bi-image me-1"></i>Ảnh gốc</div>
+                            <img id="modal-original-image" src="" alt="Ảnh gốc" class="img-fluid"
+                                onerror="this.src='/static/images/default_detection.jpg'">
+                        </div>
+                        <div class="image-container">
+                            <div class="image-title"><i class="bi bi-brush me-1"></i>Ảnh phân tích</div>
+                            <img id="modal-result-image" src="" alt="Ảnh phân tích" class="img-fluid"
+                                onerror="this.src='/static/images/default_detection.jpg'">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
                 </div>
             </div>
         </div>

@@ -8,23 +8,30 @@ import os
 
 # Định nghĩa tên các lớp - chính xác như trên Raspberry Pi
 labels = {
-    0: 'AppleCore', 1: 'DryLeaves', 2: 'EggShell', 3: 'OrangePeel',
-    4: 'Paper', 5: 'PaperCup', 6: 'PlasticBag', 7: 'BananaPeel',
-    8: 'Cans', 9: 'PlasticBottle'
+    0: 'Battery', 1: 'Cigarrette', 2: 'EggShell', 3: 'OrangePeel',
+    4: 'Paper', 5: 'PaperCup', 6: 'BananaPeel', 7: 'Cans',
+    8: 'PlasticBottle', 9: 'bone'
 }
 
 # Danh sách lớp theo thứ tự giống Raspberry Pi
 class_names = [
-    "AppleCore", "DryLeaves", "EggShell", "OrangePeel",
-    "Paper", "PaperCup", "PlasticBag", "BananaPeel",
-    "Cans", "PlasticBottle"
+    'Battery', 'Cigarrette', 'EggShell', 'OrangePeel',
+    'Paper', 'PaperCup', 'BananaPeel', 'Cans',
+    'PlasticBottle', 'bone'
 ]
 
 # Phân loại các loại rác
 waste_categories = {
-    'AppleCore': 'huu_co', 'DryLeaves': 'huu_co', 'EggShell': 'huu_co',
-    'OrangePeel': 'huu_co', 'Paper': 'vo_co', 'PaperCup': 'vo_co',
-    'PlasticBag': 'vo_co', 'BananaPeel': 'huu_co', 'Cans': 'vo_co', 'PlasticBottle': 'vo_co'
+    'Battery': 'vo_co',
+    'Cigarrette': 'huu_co',
+    'EggShell': 'huu_co',
+    'OrangePeel': 'huu_co',
+    'Paper': 'vo_co',
+    'PaperCup': 'vo_co',
+    'BananaPeel': 'huu_co',
+    'Cans': 'vo_co',
+    'PlasticBottle': 'vo_co',
+    'bone': 'huu_co'
 }
 
 # Load TFLite model

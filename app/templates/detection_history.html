@@ -21,6 +21,7 @@
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
+                    {% if request.session.get('user') %}
                     <li class="nav-item">
                         <a class="nav-link" href="/dashboard">
                             <i class="bi bi-speedometer2 me-1"></i> Dashboard
@@ -31,11 +32,31 @@
                             <i class="bi bi-clock-history me-1"></i> Lịch Sử Phát Hiện
                         </a>
                     </li>
+                    {% if request.session['user']['role'] == 'admin' %}
                     <li class="nav-item">
                         <a class="nav-link" href="/">
                             <i class="bi bi-camera-video me-1"></i> Camera Feed
                         </a>
                     </li>
+                    {% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/logout">
+                            <i class="bi bi-box-arrow-right me-1"></i> Đăng xuất ({{ request.session['user']['username']
+                            }})
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="/login">
+                            <i class="bi bi-box-arrow-in-right me-1"></i> Đăng nhập
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/register">
+                            <i class="bi bi-person-plus me-1"></i> Đăng ký
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>
@@ -131,7 +152,9 @@
                             <p><strong><i class="bi bi-check-circle me-2"></i>Độ tin cậy:</strong> <span
                                     id="modal-confidence"></span></p>
                             <p><strong><i class="bi bi-hash me-2"></i>Tên loại rác:</strong> <span
-                                    id="modal-waste-name"></span></p>
+                                    id="modal-waste-name-vn"></span></p>
+                            <p><strong><i class="bi bi-hash me-2"></i>Tên lớp:</strong> <span
+                                    id="modal-waste-name-en"></span></p>
                         </div>
                         <div class="col-md-6">
                             <p><strong><i class="bi bi-stopwatch me-2"></i>Thời gian xử lý:</strong> <span

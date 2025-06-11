@@ -42,14 +42,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     cv2.waitKey(1)
 
                     if waste_type and conf > settings.CONF_THRESHOLD:
-                        angle = 30 if waste_type == "huu_co" else 150
-                        await websocket.send_text(json.dumps({
-                            "waste_type": waste_type,
-                            "specific_waste": specific,
-                            "confidence": float(conf),
-                            "action": "move_servo",
-                            "angle": angle
-                        }))
+                        # Không gửi phản hồi về Pi nữa
                         save_waste_record(waste_type, specific, float(conf))
                         await broadcast_update({
                             "type": "waste_detection",
@@ -57,14 +50,35 @@ async def websocket_endpoint(websocket: WebSocket):
                             "specific_waste": specific,
                             "confidence": float(conf)
                         })
-                # Sensor data
+                # Nhận JSON detection từ Pi và lưu vào database
                 elif data.startswith("{"):
                     try:
-                        sensor = json.loads(data)
-                        dist = sensor.get("distance")
-                        if dist is not None:
-                            save_sensor_data(dist)
-                            await broadcast_update({"type": "sensor_data", "distance": dist})
+                        detection = json.loads(data)
+                        # Nếu có đủ các trường cần thiết thì lưu vào database
+                        if all(k in detection for k in ["waste_type", "waste_class", "max_conf", "processing_time", "num_detections", "img_b64_orig", "img_b64_result"]):
+                            from app.dashboard import save_waste_detection
+                            save_waste_detection(
+                                detection["waste_type"],
+                                detection["waste_class"],
+                                detection["max_conf"],
+                                detection["processing_time"],
+                                detection["num_detections"],
+                                detection["img_b64_orig"],
+                                detection["img_b64_result"]
+                            )
+                            await broadcast_update({
+                                "type": "waste_detection",
+                                "waste_type": detection["waste_type"],
+                                "specific_waste": detection["waste_class"],
+                                "confidence": float(detection["max_conf"])
+                            })
+                        else:
+                            # Xử lý như sensor data cũ
+                            sensor = detection
+                            dist = sensor.get("distance")
+                            if dist is not None:
+                                save_sensor_data(dist)
+                                await broadcast_update({"type": "sensor_data", "distance": dist})
                     except json.JSONDecodeError:
                         logging.error("Invalid JSON from Raspberry Pi: %s", data)
         else:

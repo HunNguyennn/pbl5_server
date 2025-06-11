@@ -2,7 +2,7 @@ import os
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    HOST: str = "127.0.0.1"
+    HOST: str = "192.168.173.93"
     PORT: int = 8000
     MODEL_PATH: str = "app/models/best_float32.tflite"
     PREDICTION_INTERVAL: float = 1.0  # Khoảng thời gian giữa các lần dự đoán (giây)

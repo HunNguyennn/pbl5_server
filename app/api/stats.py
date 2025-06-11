@@ -5,35 +5,54 @@ from typing import Dict, List, Any, Optional
 router = APIRouter()
 
 @router.get("/stats")
-async def get_waste_statistics():
+async def get_waste_statistics(period: str = "day"):
     """
     Lấy thống kê phân loại rác từ database
+    period: day|week|month - Khoảng thời gian thống kê
     """
     conn = sqlite3.connect("waste_stats.db")
     cursor = conn.cursor()
     
+    # Tổng số lượng theo loại và khoảng thời gian
+    period_filter = {
+        "day": "DATE(timestamp) = DATE('now')",
+        "week": "timestamp >= DATE('now', '-7 days')",
+        "month": "timestamp >= DATE('now', '-30 days')"
+    }
+
     # Tổng số lượng theo loại
-    cursor.execute('''
+    cursor.execute(f'''
     SELECT waste_type, COUNT(*) as count 
     FROM waste_records
+    WHERE {period_filter.get(period, period_filter["day"])}
     GROUP BY waste_type
     ''')
     waste_counts = cursor.fetchall()
     
-    # Thống kê theo ngày (7 ngày gần nhất)
-    cursor.execute('''
-    SELECT DATE(timestamp) as date, waste_type, COUNT(*) as count
-    FROM waste_records
-    WHERE timestamp >= DATE('now', '-7 days')
-    GROUP BY DATE(timestamp), waste_type
-    ORDER BY date
-    ''')
-    daily_stats = cursor.fetchall()
+    # Thống kê theo ngày hoặc tháng
+    if period == "month":
+        cursor.execute('''
+        SELECT strftime('%Y-%m', timestamp) as month, waste_type, COUNT(*) as count
+        FROM waste_records 
+        WHERE timestamp >= DATE('now', '-12 months')
+        GROUP BY month, waste_type
+        ORDER BY month
+        ''')
+    else:
+        cursor.execute('''
+        SELECT DATE(timestamp) as date, waste_type, COUNT(*) as count
+        FROM waste_records
+        WHERE timestamp >= DATE('now', '-7 days')
+        GROUP BY DATE(timestamp), waste_type
+        ORDER BY date
+        ''')
+    time_stats = cursor.fetchall()
     
     # Chi tiết từng loại rác cụ thể
-    cursor.execute('''
+    cursor.execute(f'''
     SELECT specific_waste, COUNT(*) as count
     FROM waste_records
+    WHERE {period_filter.get(period, period_filter["day"])}
     GROUP BY specific_waste
     ORDER BY count DESC
     ''')
@@ -44,15 +63,15 @@ async def get_waste_statistics():
     # Định dạng dữ liệu để trả về
     stats = {
         "waste_counts": {item[0]: item[1] for item in waste_counts},
-        "daily_stats": {},
+        "time_stats": {},
         "specific_waste": {item[0]: item[1] for item in specific_waste_stats}
     }
     
-    # Xử lý dữ liệu theo ngày
-    for date, waste_type, count in daily_stats:
-        if date not in stats["daily_stats"]:
-            stats["daily_stats"][date] = {}
-        stats["daily_stats"][date][waste_type] = count
+    # Xử lý dữ liệu theo thời gian
+    for time_unit, waste_type, count in time_stats:
+        if time_unit not in stats["time_stats"]:
+            stats["time_stats"][time_unit] = {}
+        stats["time_stats"][time_unit][waste_type] = count
     
     return stats
 
